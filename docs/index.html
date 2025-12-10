@@ -33,6 +33,7 @@
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
         .menu-header h1 {
@@ -43,6 +44,37 @@
             font-size: 2.2em;
             font-weight: 700;
             letter-spacing: -0.5px;
+            animation: slideInDown 1s ease-out;
+        }
+
+        .menu-header p {
+            color: #8B4513;
+            font-size: 1.1em;
+            margin-top: 10px;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.5s forwards;
+        }
+
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .pdf-viewer {
@@ -140,6 +172,8 @@
             background: linear-gradient(to bottom, #f8f5f0 0%, #e8dcc8 100%);
             overflow: auto;
             perspective: 1500px;
+            touch-action: pan-y pinch-zoom;
+            user-select: none;
         }
 
         #pdfCanvas {
@@ -291,6 +325,7 @@
     <div class="menu-container">
         <div class="menu-header">
             <h1>🍽️ Menu Parad'ice</h1>
+            <p>Bienvenue chez Parad'ice</p>
         </div>
 
         <div class="pdf-viewer">
@@ -301,12 +336,6 @@
                 <button id="nextBtn" onclick="nextPage()">
                     <span class="btn-icon">→</span>
                 </button>
-                <button onclick="zoomIn()">
-                    <span class="btn-icon">+</span>
-                </button>
-                <button onclick="zoomOut()">
-                    <span class="btn-icon">−</span>
-                </button>
                 <button onclick="downloadPDF()">
                     <span class="btn-icon">⬇</span>
                     <span class="btn-text">Télécharger</span>
@@ -315,7 +344,7 @@
 
             <div id="pdfMessage" class="message"></div>
             
-            <div class="canvas-container">
+            <div class="canvas-container" id="canvasContainer">
                 <canvas id="pdfCanvas"></canvas>
             </div>
             
@@ -343,6 +372,11 @@
         let pageRendering = false;
         let pageNumPending = null;
         let scale = 1.5;
+
+        // Variables pour le swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const minSwipeDistance = 50;
 
         function renderPage(num, direction = 'none') {
             pageRendering = true;
@@ -412,18 +446,6 @@
             }
         }
 
-        function zoomIn() {
-            scale += 0.2;
-            renderPage(pageNum);
-        }
-
-        function zoomOut() {
-            if (scale > 0.5) {
-                scale -= 0.2;
-                renderPage(pageNum);
-            }
-        }
-
         function downloadPDF() {
             // Créer un lien temporaire pour télécharger
             const link = document.createElement('a');
@@ -443,9 +465,38 @@
             }, 2000);
         }
 
+        // Gestion du swipe tactile
+        function handleTouchStart(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }
+
+        function handleTouchEnd(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }
+
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+            
+            if (Math.abs(swipeDistance) > minSwipeDistance) {
+                if (swipeDistance > 0) {
+                    // Swipe vers la droite = page précédente
+                    previousPage();
+                } else {
+                    // Swipe vers la gauche = page suivante
+                    nextPage();
+                }
+            }
+        }
+
         // Charger le PDF au démarrage
         document.addEventListener('DOMContentLoaded', function() {
             const pdfUrl = 'menu.pdf';
+            
+            // Ajouter les événements de swipe
+            const container = document.getElementById('canvasContainer');
+            container.addEventListener('touchstart', handleTouchStart, false);
+            container.addEventListener('touchend', handleTouchEnd, false);
             
             pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
                 pdfDoc = pdf;
